@@ -1,7 +1,23 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TradingSignal } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const getApiKey = () => {
+  try {
+    return process.env.GEMINI_API_KEY || "";
+  } catch (e) {
+    return "";
+  }
+};
+
+let aiInstance: GoogleGenAI | null = null;
+
+const getAi = () => {
+  if (!aiInstance) {
+    const apiKey = getApiKey();
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+};
 
 const TRADING_ANALYSIS_SCHEMA = {
   type: Type.OBJECT,
@@ -66,6 +82,7 @@ export async function analyzeChart(base64Image: string): Promise<TradingSignal> 
     Provide the output in the specified JSON format.
   `;
 
+  const ai = getAi();
   const response = await ai.models.generateContent({
     model,
     contents: [

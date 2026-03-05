@@ -32,8 +32,10 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { analyzeChart } from './services/gemini';
 import { TradingSignal, HistoryItem } from './types';
-import { clsx, type ClassValue } from 'clsx';
+import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+
+type ClassValue = string | number | boolean | undefined | null | { [key: string]: any } | ClassValue[];
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
