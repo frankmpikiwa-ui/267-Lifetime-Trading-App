@@ -1,8 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TradingSignal } from "../types";
+import { resizeImage } from "../utils/image";
 
 const getApiKey = () => {
   try {
+    // In Vite, process.env is polyfilled or defined in vite.config.ts
     return process.env.GEMINI_API_KEY || "";
   } catch (e) {
     return "";
@@ -12,8 +14,12 @@ const getApiKey = () => {
 let aiInstance: GoogleGenAI | null = null;
 
 const getAi = () => {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("Gemini API Key is missing. Please ensure GEMINI_API_KEY is set in your deployment environment variables.");
+  }
+  
   if (!aiInstance) {
-    const apiKey = getApiKey();
     aiInstance = new GoogleGenAI({ apiKey });
   }
   return aiInstance;
@@ -57,6 +63,14 @@ const TRADING_ANALYSIS_SCHEMA = {
 export async function analyzeChart(base64Image: string): Promise<TradingSignal> {
   const model = "gemini-3-flash-preview";
   
+  // 1. Resize/Compress image for mobile performance
+  let processedImage = base64Image;
+  try {
+    processedImage = await resizeImage(base64Image, 1200);
+  } catch (e) {
+    console.warn("Image resizing failed, using original:", e);
+  }
+
   const prompt = `
     Analyze this Forex/Trading chart screenshot. 
     Act as a professional technical analyst and sniper entry specialist.
@@ -83,26 +97,44 @@ export async function analyzeChart(base64Image: string): Promise<TradingSignal> 
   `;
 
   const ai = getAi();
-  const response = await ai.models.generateContent({
-    model,
-    contents: [
-      {
-        parts: [
-          { text: prompt },
-          {
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: base64Image.split(",")[1] || base64Image
-            }
-          }
-        ]
-      }
-    ],
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: TRADING_ANALYSIS_SCHEMA
-    }
-  });
+  
+  // Extract base64 data and mime type
+  const mimeTypeMatch = processedImage.match(/data:([^;]+);base64,/);
+  const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : "image/jpeg";
+  const base64Data = processedImage.includes(",") ? processedImage.split(",")[1] : processedImage;
 
-  return JSON.parse(response.text || "{}") as TradingSignal;
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: [
+        {
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType,
+                data: base64Data
+              }
+            }
+          ]
+        }
+      ],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: TRADING_ANALYSIS_SCHEMA
+      }
+    });
+
+    if (!response.text) {
+      throw new Error("Empty response from AI engine");
+    }
+
+    return JSON.parse(response.text) as TradingSignal;
+  } catch (error: any) {
+    console.error("Gemini API Error:", error);
+    if (error.message?.includes("API key not valid")) {
+      throw new Error("Invalid API Key. Please check your GEMINI_API_KEY environment variable.");
+    }
+    throw error;
+  }
 }

@@ -218,9 +218,10 @@ export default function App() {
       const signal = await analyzeChart(image);
       setResult(signal);
       saveToHistory(image, signal);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Analysis failed:", error);
-      alert("Failed to analyze chart. Please try again.");
+      const errorMessage = error.message || "Failed to analyze chart. Please try again.";
+      alert(errorMessage);
     } finally {
       setAnalyzing(false);
     }
