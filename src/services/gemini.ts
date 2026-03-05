@@ -14,6 +14,7 @@ const TRADING_ANALYSIS_SCHEMA = {
     takeProfit2: { type: Type.STRING },
     riskReward: { type: Type.STRING },
     confidence: { type: Type.NUMBER },
+    confluenceScore: { type: Type.NUMBER, description: "Number of technical confirmations (1-10)" },
     analysis: {
       type: Type.OBJECT,
       properties: {
@@ -23,9 +24,14 @@ const TRADING_ANALYSIS_SCHEMA = {
         bollingerBands: { type: Type.STRING },
         stochastic: { type: Type.STRING },
         trendlines: { type: Type.STRING },
+        fibonacci: { type: Type.STRING },
+        macd: { type: Type.STRING },
+        volume: { type: Type.STRING },
+        movingAverages: { type: Type.STRING },
+        candlestickPatterns: { type: Type.STRING },
         patterns: { type: Type.ARRAY, items: { type: Type.STRING } }
       },
-      required: ["marketStructure", "supportResistance", "rsi", "bollingerBands", "stochastic", "trendlines", "patterns"]
+      required: ["marketStructure", "supportResistance", "rsi", "bollingerBands", "stochastic", "trendlines", "fibonacci", "macd", "volume", "movingAverages", "candlestickPatterns", "patterns"]
     },
     reasoning: { type: Type.STRING }
   },
@@ -45,9 +51,17 @@ export async function analyzeChart(base64Image: string): Promise<TradingSignal> 
        - Trendlines: Breakouts/Retests.
        - Bollinger Bands: Squeeze/Expansion/Rejection.
        - Stochastic: Crossovers/Divergence.
-    3. Sniper Entry Logic: 
-       - Only give a BUY/SELL signal if at least 3 confirmations align.
-       - If conditions are weak, set direction to NEUTRAL and confidence below 50%.
+       - Fibonacci: Key retracement levels (38.2%, 50%, 61.8%).
+       - MACD: Histogram momentum and signal crossovers.
+       - Volume: Confirming price action or showing exhaustion.
+       - Moving Averages: EMA 50/200 crossovers and price relationship.
+       - Candlestick Patterns: Engulfing, Pin Bars, Dojis at key levels.
+    3. Sniper Entry Logic (95%+ Accuracy Goal): 
+       - Only give a BUY/SELL signal if at least 5 confirmations align.
+       - confluenceScore: Count how many of the technical indicators (RSI, Trendlines, S/R, etc.) align with the trade direction.
+       - Confirm with multiple timeframes if possible (look for confluence).
+       - If conditions are weak or conflicting, set direction to NEUTRAL and confidence below 50%.
+       - Prioritize high-probability setups like "Break and Retest" or "Double Bottom/Top" at major S/R.
     
     Provide the output in the specified JSON format.
   `;

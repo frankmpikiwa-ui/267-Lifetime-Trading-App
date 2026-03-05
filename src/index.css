@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --color-trading-bg: #0a0e17;
-  --color-trading-card: #151c2c;
-  --color-trading-accent: #3b82f6;
+  --color-trading-bg: #050505;
+  --color-trading-card: #120808;
+  --color-trading-accent: #991b1b;
   --color-trading-success: #10b981;
   --color-trading-danger: #ef4444;
   --color-trading-warning: #f59e0b;
@@ -16,7 +16,9 @@
 
 @layer base {
   body {
-    @apply bg-trading-bg text-trading-text font-sans antialiased;
+    @apply text-trading-text font-sans antialiased;
+    background: linear-gradient(135deg, #1a0505 0%, #050505 100%);
+    min-height: 100vh;
   }
 }
 
@@ -27,4 +29,10 @@
 .trading-grid {
   background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
   background-size: 40px 40px;
+}
+
+@keyframes scan {
+  0% { top: 0; }
+  50% { top: 100%; }
+  100% { top: 0; }
 }
