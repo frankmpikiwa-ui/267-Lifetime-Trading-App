@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --color-trading-bg: #050505;
-  --color-trading-card: #120808;
-  --color-trading-accent: #991b1b;
+  --color-trading-bg: #020617;
+  --color-trading-card: #0f172a;
+  --color-trading-accent: #3b82f6;
   --color-trading-success: #10b981;
   --color-trading-danger: #ef4444;
   --color-trading-warning: #f59e0b;
-  --color-trading-text: #e2e8f0;
+  --color-trading-text: #f8fafc;
   --color-trading-muted: #94a3b8;
   
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -17,8 +17,24 @@
 @layer base {
   body {
     @apply text-trading-text font-sans antialiased;
-    background: linear-gradient(135deg, #1a0505 0%, #050505 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
     min-height: 100vh;
+    position: relative;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('https://images.unsplash.com/photo-1611974717484-7da00ff12990?auto=format&fit=crop&q=80&w=1920');
+    background-size: cover;
+    background-position: center;
+    opacity: 0.45;
+    z-index: -1;
+    pointer-events: none;
   }
 }
 

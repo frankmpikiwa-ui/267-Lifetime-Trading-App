@@ -13,6 +13,7 @@ import {
   Calculator, 
   ShieldAlert, 
   ChevronRight, 
+  Lock,
   Target, 
   Activity, 
   Zap,
@@ -130,16 +131,33 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [tradeStatus, setTradeStatus] = useState<{ success: boolean; message: string } | null>(null);
+  const [monitoringMode, setMonitoringMode] = useState(false);
+  const [chartUrl, setChartUrl] = useState('');
   const [selectedBroker, setSelectedBroker] = useState<'OANDA' | 'DERIV' | 'WELTRADE' | 'GENERIC_MT4'>('OANDA');
   const [robotMode, setRobotMode] = useState(true);
   const [selectedPair, setSelectedPair] = useState<string>('EURUSD');
   const [customPair, setCustomPair] = useState<string>('');
   const [isAutoScanning, setIsAutoScanning] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [email, setEmail] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  const AUTHORIZED_EMAIL = 'frank.mpikiwa@gmail.com';
 
   const tradingPairs = [
     'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 
     'XAUUSD', 'BTCUSD', 'ETHUSD', 'NAS100', 'US30', 'GER40'
   ];
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.toLowerCase() === AUTHORIZED_EMAIL.toLowerCase()) {
+      setIsAuthenticated(true);
+      setLoginError('');
+    } else {
+      setLoginError('Access Denied: Unauthorized Email');
+    }
+  };
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('trading_history');
@@ -147,6 +165,16 @@ export default function App() {
       setHistory(JSON.parse(savedHistory));
     }
   }, []);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (monitoringMode && image && !analyzing) {
+      interval = setInterval(() => {
+        startAnalysis();
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+    return () => clearInterval(interval);
+  }, [monitoringMode, image, analyzing]);
 
   const saveToHistory = (imageUrl: string, signal: TradingSignal) => {
     const newItem: HistoryItem = {
@@ -167,8 +195,17 @@ export default function App() {
       reader.onloadend = () => {
         setImage(reader.result as string);
         setResult(null);
+        setChartUrl('');
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUrlSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (chartUrl) {
+      setImage(chartUrl);
+      setResult(null);
     }
   };
 
@@ -238,6 +275,62 @@ export default function App() {
     }
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 trading-grid">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md bg-trading-card p-8 rounded-3xl border border-white/10 shadow-2xl backdrop-blur-xl"
+        >
+          <div className="flex flex-col items-center text-center space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-trading-accent flex items-center justify-center shadow-lg shadow-trading-accent/20">
+              <Lock className="text-white" size={32} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black tracking-tighter uppercase">Secure Access</h1>
+              <p className="text-trading-muted text-sm mt-1">Enter your authorized email to access the terminal</p>
+            </div>
+            
+            <form onSubmit={handleLogin} className="w-full space-y-4">
+              <div className="space-y-2 text-left">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-trading-muted ml-1">Email Address</label>
+                <input 
+                  type="email" 
+                  required
+                  placeholder="name@example.com"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-trading-accent transition-colors"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              
+              {loginError && (
+                <div className="text-trading-danger text-xs font-bold bg-trading-danger/10 p-3 rounded-lg border border-trading-danger/20">
+                  {loginError}
+                </div>
+              )}
+
+              <button 
+                type="submit"
+                className="w-full bg-trading-accent hover:bg-blue-600 text-white py-4 rounded-xl font-bold transition-all transform active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                Unlock Terminal
+                <ChevronRight size={18} />
+              </button>
+            </form>
+
+            <div className="pt-4 border-t border-white/5 w-full">
+              <p className="text-[10px] text-trading-muted uppercase tracking-widest">
+                Developer Access Only
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-trading-bg text-trading-text trading-grid p-4 md:p-8">
       <header className="max-w-6xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -246,8 +339,8 @@ export default function App() {
             <CandlestickChart size={32} className="text-trading-accent" />
           </div>
           <div>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-white uppercase">
-              247 LIFETIME TRADING
+            <h1 className="text-lg md:text-2xl font-sans font-black tracking-tighter text-white uppercase whitespace-nowrap">
+              247 LIFETIME <span className="text-trading-success">TRADING</span>
             </h1>
             <p className="text-trading-muted text-sm flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-trading-success animate-pulse" />
@@ -281,20 +374,45 @@ export default function App() {
         <div className="lg:col-span-7 space-y-6">
           <section className="bg-trading-card rounded-2xl border border-white/5 overflow-hidden">
             {!image ? (
-              <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
+              <div className="p-12 flex flex-col items-center justify-center text-center space-y-6">
                 <div className="w-20 h-20 rounded-full bg-trading-accent/10 flex items-center justify-center">
                   <Upload className="text-trading-accent" size={32} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold">Upload Chart Screenshot</h3>
+                  <h3 className="text-xl font-semibold">Analyze Chart Screenshot</h3>
                   <p className="text-trading-muted text-sm max-w-xs mx-auto mt-2">
                     Supports MT4, MT5, TradingView screenshots. Major pairs, Gold, Crypto.
                   </p>
                 </div>
-                <label className="cursor-pointer bg-trading-accent hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-medium transition-all transform active:scale-95">
-                  Select File
-                  <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
-                </label>
+                
+                <div className="w-full max-w-sm space-y-4">
+                  <label className="cursor-pointer block bg-trading-accent hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-medium transition-all transform active:scale-95">
+                    Select File
+                    <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
+                  </label>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-white/10"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-trading-card px-2 text-trading-muted">Or use URL</span>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleUrlSubmit} className="flex gap-2">
+                    <input 
+                      type="url" 
+                      placeholder="https://example.com/chart.png"
+                      className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-trading-accent"
+                      value={chartUrl}
+                      onChange={(e) => setChartUrl(e.target.value)}
+                    />
+                    <button type="submit" className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                      Load
+                    </button>
+                  </form>
+                </div>
               </div>
             ) : (
               <div className="relative group">
@@ -323,15 +441,37 @@ export default function App() {
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex justify-center"
+              className="space-y-4"
             >
               <button 
                 onClick={startAnalysis}
-                className="w-full bg-trading-accent hover:bg-red-700 text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-lg shadow-trading-accent/20 transition-all transform active:scale-[0.98] group"
+                className="w-full bg-trading-accent hover:bg-blue-700 text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-lg shadow-trading-accent/20 transition-all transform active:scale-[0.98] group"
               >
                 <Target className="group-hover:scale-110 transition-transform" size={24} />
                 SCAN CHART FOR SNIPER ENTRY
               </button>
+
+              <div className="flex items-center justify-between bg-trading-card p-4 rounded-xl border border-white/5">
+                <div className="flex items-center gap-3">
+                  <Activity size={20} className={monitoringMode ? "text-trading-success" : "text-trading-muted"} />
+                  <div>
+                    <div className="text-sm font-bold">Auto-Scan Mode</div>
+                    <div className="text-[10px] text-trading-muted uppercase tracking-widest">Scans every 5 minutes</div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setMonitoringMode(!monitoringMode)}
+                  className={cn(
+                    "w-12 h-6 rounded-full transition-colors relative",
+                    monitoringMode ? "bg-trading-success" : "bg-white/10"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-1 w-4 h-4 rounded-full bg-white transition-all",
+                    monitoringMode ? "right-1" : "left-1"
+                  )} />
+                </button>
+              </div>
             </motion.div>
           )}
 
