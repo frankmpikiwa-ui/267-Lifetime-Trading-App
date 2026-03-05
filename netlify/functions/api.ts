@@ -1,11 +1,11 @@
 import serverless from "serverless-http";
-import { appPromise } from "../../server";
+import { createServer } from "../../src/server/app";
 
 let serverlessHandler: any;
 
 export const handler = async (event: any, context: any) => {
   if (!serverlessHandler) {
-    const app = await appPromise;
+    const app = await createServer();
     serverlessHandler = serverless(app);
   }
   return serverlessHandler(event, context);
