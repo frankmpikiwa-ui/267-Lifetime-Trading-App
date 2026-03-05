@@ -15,8 +15,8 @@ let aiInstance: GoogleGenAI | null = null;
 
 const getAi = () => {
   const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error("Gemini API Key is missing. Please ensure GEMINI_API_KEY is set in your deployment environment variables.");
+  if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+    throw new Error("Gemini API Key is missing. If you are on Netlify, please add GEMINI_API_KEY to your Site Settings > Environment Variables and redeploy. If you are in the AI Studio preview, please ensure the key is set in the Secrets panel.");
   }
   
   if (!aiInstance) {
