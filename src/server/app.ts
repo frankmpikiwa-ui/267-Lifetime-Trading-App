@@ -2,8 +2,16 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Helper to get __dirname in both ESM and CJS
+const getDirname = () => {
+  try {
+    return path.dirname(fileURLToPath(import.meta.url));
+  } catch (e) {
+    return process.cwd();
+  }
+};
+
+const __dirname = getDirname();
 
 export async function createServer() {
   const app = express();
