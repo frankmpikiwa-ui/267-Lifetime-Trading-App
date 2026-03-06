@@ -220,7 +220,18 @@ export default function App() {
       saveToHistory(image, signal);
     } catch (error: any) {
       console.error("Analysis failed:", error);
-      const errorMessage = error.message || "Failed to analyze chart. Please try again.";
+      let errorMessage = "Failed to analyze chart. Please try again.";
+      
+      if (error instanceof Error && error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object' && error.message) {
+        errorMessage = error.message;
+      } else if (error) {
+        errorMessage = `Error: ${JSON.stringify(error)}`;
+      }
+      
       alert(errorMessage);
     } finally {
       setAnalyzing(false);

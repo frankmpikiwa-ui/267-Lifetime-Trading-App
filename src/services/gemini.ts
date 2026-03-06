@@ -4,8 +4,12 @@ import { resizeImage } from "../utils/image";
 
 const getApiKey = () => {
   try {
-    // In Vite, process.env is polyfilled or defined in vite.config.ts
-    return process.env.GEMINI_API_KEY || "";
+    // Try multiple ways to get the API key
+    return (
+      (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+      process.env.GEMINI_API_KEY ||
+      ""
+    );
   } catch (e) {
     return "";
   }
@@ -15,7 +19,7 @@ let aiInstance: GoogleGenAI | null = null;
 
 const getAi = () => {
   const apiKey = getApiKey();
-  if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+  if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || apiKey === "undefined" || apiKey === "") {
     throw new Error("Gemini API Key is missing. If you are on Netlify, please add GEMINI_API_KEY to your Site Settings > Environment Variables and redeploy. If you are in the AI Studio preview, please ensure the key is set in the Secrets panel.");
   }
   
@@ -61,12 +65,14 @@ const TRADING_ANALYSIS_SCHEMA = {
 };
 
 export async function analyzeChart(base64Image: string): Promise<TradingSignal> {
-  const model = "gemini-3-flash-preview";
+  // Use a stable and powerful model for vision tasks
+  const model = "gemini-3.1-flash-lite-preview";
   
   // 1. Resize/Compress image for mobile performance
   let processedImage = base64Image;
   try {
-    processedImage = await resizeImage(base64Image, 1200);
+    // Mobile screenshots can be huge, resize to a safe dimension
+    processedImage = await resizeImage(base64Image, 1024);
   } catch (e) {
     console.warn("Image resizing failed, using original:", e);
   }
@@ -96,14 +102,18 @@ export async function analyzeChart(base64Image: string): Promise<TradingSignal> 
     Provide the output in the specified JSON format.
   `;
 
-  const ai = getAi();
-  
-  // Extract base64 data and mime type
-  const mimeTypeMatch = processedImage.match(/data:([^;]+);base64,/);
-  const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : "image/jpeg";
-  const base64Data = processedImage.includes(",") ? processedImage.split(",")[1] : processedImage;
-
   try {
+    const ai = getAi();
+    
+    // Extract base64 data and mime type
+    const mimeTypeMatch = processedImage.match(/data:([^;]+);base64,/);
+    const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : "image/jpeg";
+    const base64Data = processedImage.includes(",") ? processedImage.split(",")[1] : processedImage;
+
+    if (!base64Data || base64Data.length < 100) {
+      throw new Error("Invalid image data. Please try a different screenshot.");
+    }
+
     const response = await ai.models.generateContent({
       model,
       contents: [
@@ -126,15 +136,37 @@ export async function analyzeChart(base64Image: string): Promise<TradingSignal> 
     });
 
     if (!response.text) {
-      throw new Error("Empty response from AI engine");
+      throw new Error("The AI engine returned an empty response. This can happen if the image is unclear or the model is overloaded.");
     }
 
-    return JSON.parse(response.text) as TradingSignal;
+    const cleanedText = response.text.trim();
+    return JSON.parse(cleanedText) as TradingSignal;
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    if (error.message?.includes("API key not valid")) {
-      throw new Error("Invalid API Key. Please check your GEMINI_API_KEY environment variable.");
+    
+    // Provide more user-friendly error messages
+    let userMessage = "";
+    
+    if (error instanceof Error) {
+      userMessage = error.message;
+    } else if (typeof error === 'string') {
+      userMessage = error;
+    } else {
+      userMessage = JSON.stringify(error);
     }
-    throw error;
+
+    if (!userMessage || userMessage === "{}" || userMessage === "null") {
+      userMessage = "An unexpected error occurred during analysis.";
+    }
+    
+    if (userMessage.includes("API key not valid")) {
+      userMessage = "Invalid API Key. Please check your GEMINI_API_KEY in Netlify settings.";
+    } else if (userMessage.includes("fetch")) {
+      userMessage = "Network error. Please check your internet connection and try again.";
+    } else if (userMessage.includes("quota")) {
+      userMessage = "API quota exceeded. Please try again in a few minutes.";
+    }
+    
+    throw new Error(userMessage);
   }
 }
